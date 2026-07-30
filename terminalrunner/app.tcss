@@ -1,0 +1,211 @@
+Screen {
+    layout: vertical;
+}
+
+Screen > .screen--selection {
+    background: $surface-lighten-2;
+    color: $text;
+}
+
+Screen, #command-list, #command-info, #output {
+    scrollbar-size: 1 1;
+}
+
+#body {
+    height: 1fr;
+    padding: 1;
+}
+
+#sidebar {
+    width: 28;
+    min-width: 28;
+    height: 100%;
+    padding: 1;
+    background: $background;
+}
+
+#sidebar.is-expanded {
+    width: 48;
+    min-width: 40;
+}
+
+.panel-title {
+    height: 1;
+    color: $text-muted;
+    text-style: bold;
+}
+
+#command-list {
+    layout: grid;
+    grid-size: 1;
+    grid-columns: 1fr;
+    grid-rows: auto;
+    height: 1fr;
+    margin-top: 1;
+    overflow-y: auto;
+    scrollbar-color: $text-muted;
+    scrollbar-color-hover: $text;
+    scrollbar-color-active: $text;
+    scrollbar-background: $surface;
+}
+
+
+.command-button {
+    width: 100%;
+    height: 1;
+    min-height: 1;
+    margin: 0;
+    padding: 0 1;
+    border: none;
+    background: transparent;
+    color: $text;
+    content-align: left middle;
+    text-align: left;
+    text-wrap: nowrap;
+    text-overflow: ellipsis;
+}
+
+.command-button:hover, .command-button:focus {
+    background: transparent;
+    color: $text;
+}
+
+.command-button.is-selected {
+    color: $primary;
+}
+
+.command-button.is-running {
+    background: transparent;
+    color: $error;
+}
+
+.command-button.is-running:hover {
+    color: $error-lighten-2;
+}
+
+.command-separator, .command-separator:disabled {
+    color: $text-muted;
+    content-align: center middle;
+    text-align: center;
+    text-style: bold;
+    opacity: 1;
+}
+
+#details {
+    width: 1fr;
+    height: 100%;
+    margin-left: 1;
+}
+
+#description {
+    height: 4;
+    margin-top: 1;
+    padding: 0 1;
+    color: $text;
+    border-left: tall $primary;
+    text-wrap: nowrap;
+    text-overflow: ellipsis;
+}
+
+#command-preview {
+    color: $text-muted;
+    padding: 1 0 0 1;
+    height: 2;
+    text-style: italic;
+}
+
+#command-info {
+    width: 100%;
+    height: 100%;
+    padding: 1 2;
+    border: round $primary;
+    background: $surface;
+    overflow-y: auto;
+}
+
+#command-info-title {
+    color: $text;
+    text-style: bold;
+    text-wrap: wrap;
+}
+
+#command-info-description {
+    color: $text;
+    text-wrap: wrap;
+}
+
+#command-info-command {
+    color: $text;
+    text-wrap: wrap;
+}
+
+.info-label {
+    margin-top: 1;
+    color: $text-muted;
+}
+
+.help-hint {
+    margin-top: 1;
+    color: $text-muted;
+}
+
+.close-button {
+    width: auto;
+    height: 1;
+    min-height: 1;
+    margin-top: 1;
+    padding: 0 1;
+    border: none;
+    background: $primary-darken-2;
+    color: $text;
+}
+
+.close-button:hover, .close-button:focus {
+    background: $primary;
+}
+
+#output {
+    height: 1fr;
+    scrollbar-size: 1 2;
+    border: none;
+    padding: 1;
+    background: $surface-darken-1;
+    color: $text;
+    scrollbar-color: $text-muted;
+    scrollbar-color-hover: $text;
+    scrollbar-color-active: $text;
+    scrollbar-background: $surface;
+}
+
+#output:focus {
+    background-tint: transparent;
+}
+
+#status-bar {
+    height: 1;
+    padding: 0 1;
+    background: $background;
+}
+
+#activity-indicator {
+    width: 1;
+    height: 1;
+    margin-right: 1;
+    color: $primary;
+}
+
+#status {
+    width: 1fr;
+    color: $text-muted;
+}
+
+Footer {
+    color: $text-muted;
+    background: $surface-darken-1;
+}
+
+FooterKey {
+    .footer-key--key {
+        color: $primary;
+    }
+}
