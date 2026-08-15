@@ -1,6 +1,8 @@
 # TerminalRunner
 
 TerminalRunner - кроссплатформенный TUI-лаунчер для запуска заранее настроенных команд в обычном терминале.
+<img width="1100" height="620" alt="image" src="https://github.com/user-attachments/assets/d3ea13e9-3582-4be6-95bb-1e848a36278c" />
+
 
 ## Быстрый старт
 
