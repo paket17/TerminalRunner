@@ -7,26 +7,13 @@ Screen > .screen--selection {
     color: $text;
 }
 
-Screen, #command-list, #command-info, #output {
+Screen, #command-list, #command-info {
     scrollbar-size: 1 1;
 }
 
 #body {
     height: 1fr;
     padding: 1;
-}
-
-#sidebar {
-    width: 28;
-    min-width: 28;
-    height: 100%;
-    padding: 1;
-    background: $background;
-}
-
-#sidebar.is-expanded {
-    width: 48;
-    min-width: 40;
 }
 
 .panel-title {
@@ -36,19 +23,57 @@ Screen, #command-list, #command-info, #output {
 }
 
 #command-list {
-    layout: grid;
-    grid-size: 1;
-    grid-columns: 1fr;
-    grid-rows: auto;
+    layout: horizontal;
     height: 1fr;
     margin-top: 1;
-    overflow-y: auto;
+    width: 100%;
+    overflow-x: auto;
     scrollbar-color: $text-muted;
     scrollbar-color-hover: $text;
     scrollbar-color-active: $text;
     scrollbar-background: $surface;
 }
 
+#command-summary {
+    height: 4;
+    padding: 0 1;
+    border-top: solid $primary-darken-2;
+    background: $surface-darken-1;
+}
+
+#command-summary-content {
+    height: 2;
+    padding-left: 1;
+    border-left: heavy $panel;
+}
+
+.command-summary-row {
+    height: 1;
+}
+
+.command-summary-label {
+    width: 13;
+    color: $text-muted;
+    text-style: bold;
+}
+
+.command-prompt {
+    width: 2;
+    color: $text-muted;
+}
+
+#command-summary-description, #command-summary-command {
+    width: 1fr;
+    color: $text;
+    text-wrap: nowrap;
+    text-overflow: ellipsis;
+}
+
+.command-column {
+    width: 28;
+    min-width: 28;
+    height: 100%;
+}
 
 .command-button {
     width: 100%;
@@ -74,44 +99,17 @@ Screen, #command-list, #command-info, #output {
     color: $primary;
 }
 
-.command-button.is-running {
-    background: transparent;
-    color: $error;
-}
-
-.command-button.is-running:hover {
-    color: $error-lighten-2;
-}
-
 .command-separator, .command-separator:disabled {
-    color: $text-muted;
+    color: $primary;
     content-align: center middle;
     text-align: center;
     text-style: bold;
     opacity: 1;
 }
 
-#details {
+#command-details {
     width: 1fr;
     height: 100%;
-    margin-left: 1;
-}
-
-#description {
-    height: 4;
-    margin-top: 1;
-    padding: 0 1;
-    color: $text;
-    border-left: tall $primary;
-    text-wrap: nowrap;
-    text-overflow: ellipsis;
-}
-
-#command-preview {
-    color: $text-muted;
-    padding: 1 0 0 1;
-    height: 2;
-    text-style: italic;
 }
 
 #command-info {
@@ -150,6 +148,7 @@ Screen, #command-list, #command-info, #output {
 }
 
 .close-button {
+    dock: bottom;
     width: auto;
     height: 1;
     min-height: 1;
@@ -164,41 +163,49 @@ Screen, #command-list, #command-info, #output {
     background: $primary;
 }
 
-#output {
-    height: 1fr;
-    scrollbar-size: 1 2;
-    border: none;
-    padding: 1;
-    background: $surface-darken-1;
-    color: $text;
-    scrollbar-color: $text-muted;
-    scrollbar-color-hover: $text;
-    scrollbar-color-active: $text;
-    scrollbar-background: $surface;
-}
-
-#output:focus {
-    background-tint: transparent;
-}
-
 #status-bar {
-    height: 1;
+    height: 3;
     padding: 0 1;
-    background: $background;
-}
-
-#activity-indicator {
-    width: 1;
-    height: 1;
-    margin-right: 1;
-    color: $primary;
+    background: $surface-darken-1;
+    border-bottom: solid $panel;
 }
 
 #status {
     width: 1fr;
-    color: $text-muted;
+    height: 2;
 }
 
+#status-spacer {
+    height: 1;
+}
+
+#status-message {
+    width: auto;
+    color: $text;
+}
+
+#status-space {
+    width: 1fr;
+}
+
+#status-time {
+    width: auto;
+    height: 1;
+    color: $text;
+    text-align: right;
+}
+
+#status-message.status-success {
+    color: $success;
+}
+
+#status-message.status-error {
+    color: $error;
+}
+
+#status-line {
+    height: 1;
+}
 Footer {
     color: $text-muted;
     background: $surface-darken-1;

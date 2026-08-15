@@ -1,144 +1,29 @@
 commands:
-  - title: Собрать все
-    description: Собрать все компоненты, кроме dsclient, без тестов.
-    executable: do all local-build-up --skip=dsclient --no-tests
+  - title: Test commands
 
-  - title: Включить все
-    description: Запустить все локальные компоненты.
-    executable: do all local-up
+  - title: Python version
+    description: Prints the Python version.
+    commands:
+      - [py, --version]
 
-  - title: Собрать webserver
-    description: Собрать webserver без тестов.
-    executable: do webserver local-build-up --no-tests
+  - title: Windows shell example
+    description: Runs only in Windows cmd.exe and expands the current user name.
+    commands:
+      - shell: 'echo Windows user: %USERNAME%'
 
-  - title: Сгенерировать типы web-клиента
-    description: Сгенерировать типы для web-клиента.
-    executable: do webclient gen
+  - title: Linux shell example
+    description: Runs only in Linux /bin/sh and expands the current user name.
+    commands:
+      - shell: 'echo Linux user: $USER'
 
-  - title: Собрать dsweb
-    description: Собрать dsweb без тестов и JavaScript.
-    executable: do dsweb local-build-up --no-tests --no-js
+  - title: Run sequential commands
+    description: Runs two processes in order.
+    commands:
+      - [py, -c, 'print("First step")']
+      - [py, -c, 'print("Second step")']
 
-  - title: Собрать dsdesktop
-    description: Собрать dsdesktop без тестов.
-    executable: do dsdesktop local-build-up --no-tests
+  - title: Expected failure
+    description: Exits with code 1 to verify failure reporting.
+    commands:
+      - [py, -c, 'raise SystemExit(1)']
 
-  - title: Сгенерировать типы DS-клиента
-    description: Сгенерировать типы для DS-клиента.
-    executable: do dsclient gen
-
-  - title: Тест1
-    description: Тест
-    executable: cd .. && ls
-
-  - title: Тест2
-    description: Тест
-    executable: cd .. && ls
-
-  - title: Тест3
-    description: Тест
-    executable: cd .. && ls
-
-  - title: Тест4
-    description: Тест
-    executable: cd .. && ls
-
-  - title: Тест5
-    description: Тест
-    executable: cd .. && ls
-
-  - title: Тест1
-    description: Тест
-    executable: cd .. && ls
-
-  - title: Тест2
-    description: Тест
-    executable: cd .. && ls
-
-  - title: Тест3
-    description: Тест
-    executable: cd .. && ls
-
-  - title: Тест4
-    description: Тест
-    executable: cd .. && ls
-
-  - title: Тест5
-    description: Тест
-    executable: cd .. && ls
-
-  - title: Тест1
-    description: Тест
-    executable: cd .. && ls
-
-  - title: Тест2
-    description: Тест
-    executable: cd .. && ls
-
-  - title: Тест3
-    description: Тест
-    executable: cd .. && ls
-
-  - title: Тест4
-    description: Тест
-    executable: cd .. && ls
-
-  - title: Тест5
-    description: Тест
-    executable: cd .. && ls
-  
-  - title: Тест1
-    description: Тест
-    executable: cd .. && ls
-
-  - title: Тест2
-    description: Тест
-    executable: cd .. && ls
-
-  - title: Тест3
-    description: Тест
-    executable: cd .. && ls
-
-  - title: Тест4
-
-  - title: Тест5
-    description: Тест
-    executable: cd .. && ls
-
-  - title: Тест1
-    description: Тест
-    executable: cd .. && ls
-
-  - title: Тест2
-    description: Тест
-    executable: cd .. && ls
-
-  - title: Тест3
-    description: Тест
-    executable: cd .. && ls
-
-  - title: Тест4
-    description: Тест
-    executable: cd .. && ls
-
-  - title: Тест5
-    description: Тест
-    executable: cd .. && ls
-    
-  - title: Тест1
-
-  - title: Тест2
-    description: Тест
-    executable: cd .. && ls
-
-  - title: Тест3
-    description: Тест
-    executable: cd .. && ls
-
-  - title: Тест4
-    description: Тест
-    executable: cd .. && ls
-
-  - title: Тест5
-    description: Тест
-    executable: cd .. && ls

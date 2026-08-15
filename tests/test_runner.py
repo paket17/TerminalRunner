@@ -1,163 +1,241 @@
-import sys
+import subprocess
 import signal
-import threading
-import time
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, call, patch
 
-from terminalrunner.models import CommandDefinition
+from terminalrunner.models import CommandDefinition, CommandStep
 from terminalrunner.runner import CommandExecutor
 
 
 class CommandExecutorTests(unittest.TestCase):
-    def test_runs_command_and_returns_output(self) -> None:
-        command = CommandDefinition(
-            title="Test",
-            description="Test command",
-            executable=sys.executable,
-            arguments=("-c", "print('completed')"),
-            timeout_seconds=5,
-        )
-        output: list[str] = []
-
-        result = CommandExecutor().run(command, output.append)
-
-        self.assertEqual(result.exit_code, 0)
-        self.assertEqual(result.error, None)
-        self.assertIn("completed", "".join(output))
-
     @patch("terminalrunner.runner.sys.platform", "win32")
     @patch("terminalrunner.runner.shutil.which", return_value=r"D:\Tools\do.bat")
-    def test_runs_batch_file_from_path_through_cmd(self, which: object) -> None:
+    def test_runs_batch_file_from_path_through_cmd(self, which: Mock) -> None:
         command = CommandDefinition(
             title="Test",
             description="Test command",
-            executable="do",
-            arguments=("all", "local-up"),
-            timeout_seconds=5,
+            commands=(CommandStep(argv=("do", "all", "local-up")),),
         )
 
         self.assertEqual(
-            CommandExecutor._build_process_arguments(command),
-            ["cmd.exe", "/d", "/s", "/c", r"D:\Tools\do.bat", "all", "local-up"],
+            CommandExecutor._build_process_arguments(command.commands[0].argv),
+            [
+                "cmd.exe",
+                "/d",
+                "/s",
+                "/c",
+                "call",
+                r"D:\Tools\do.bat",
+                "all",
+                "local-up",
+            ],
+        )
+
+    @patch("terminalrunner.runner.sys.platform", "win32")
+    @patch(
+        "terminalrunner.runner.shutil.which",
+        side_effect=[
+            r"D:\Programs\Microsoft VS Code\bin\code",
+            r"D:\Programs\Microsoft VS Code\bin\code.cmd",
+        ],
+    )
+    def test_prefers_cmd_wrapper_for_extensionless_windows_command(
+        self, which: Mock
+    ) -> None:
+        command = CommandDefinition(
+            title="Open config",
+            description="Open config",
+            commands=(CommandStep(argv=("code", r"D:\Projects\config.yml")),),
+        )
+
+        self.assertEqual(
+            CommandExecutor._build_process_arguments(command.commands[0].argv),
+            [
+                "cmd.exe",
+                "/d",
+                "/s",
+                "/c",
+                "call",
+                r"D:\Programs\Microsoft VS Code\bin\code.cmd",
+                r"D:\Projects\config.yml",
+            ],
         )
 
     @patch("terminalrunner.runner.sys.platform", "win32")
     @patch("terminalrunner.runner.shutil.which", return_value=r"D:\Tools\do.cmd")
     def test_rejects_cmd_metacharacters_in_batch_file_arguments(
-        self, which: object
+        self, which: Mock
     ) -> None:
         command = CommandDefinition(
             title="Test",
             description="Test command",
-            executable="do",
-            arguments=("safe&echo injected",),
-            timeout_seconds=5,
+            commands=(CommandStep(argv=("do", "safe&echo injected")),),
         )
 
         with self.assertRaisesRegex(ValueError, "CMD metacharacters"):
-            CommandExecutor._build_process_arguments(command)
+            CommandExecutor._build_process_arguments(command.commands[0].argv)
 
     @patch("terminalrunner.runner.sys.platform", "win32")
-    def test_runs_chained_command_through_windows_shell(self) -> None:
-        command = CommandDefinition(
-            title="Test",
-            description="Test command",
-            executable="do",
-            arguments=("first", "&&", "do", "second"),
-            timeout_seconds=5,
-            shell_command="do first && do second",
-        )
-
+    def test_builds_windows_shell_command(self) -> None:
         self.assertEqual(
-            CommandExecutor._build_process_arguments(command),
-            ["cmd.exe", "/d", "/s", "/c", "do first && do second"],
+            CommandExecutor._build_shell_process_arguments("echo %USERNAME%"),
+            ["cmd.exe", "/d", "/s", "/c", "echo %USERNAME%"],
         )
 
     @patch("terminalrunner.runner.sys.platform", "linux")
-    def test_runs_chained_command_through_linux_shell(self) -> None:
-        command = CommandDefinition(
-            title="Test",
-            description="Test command",
-            executable="do",
-            arguments=("first", "&&", "do", "second"),
-            timeout_seconds=5,
-            shell_command="do first && do second",
-        )
-
+    def test_builds_linux_shell_command(self) -> None:
         self.assertEqual(
-            CommandExecutor._build_process_arguments(command),
-            ["/bin/sh", "-c", "do first && do second"],
+            CommandExecutor._build_shell_process_arguments("echo $USER"),
+            ["/bin/sh", "-c", "echo $USER"],
         )
 
-    @patch("terminalrunner.runner.sys.platform", "win32")
-    def test_forces_windows_process_termination(self) -> None:
-        class Process:
-            def __init__(self) -> None:
-                self.force: bool | None = None
-
-            def terminate(self, force: bool = False) -> None:
-                self.force = force
-
-        process = Process()
-
-        CommandExecutor._terminate(process)
-
-        self.assertTrue(process.force)
-
-    def test_cannot_cancel_when_idle(self) -> None:
-        self.assertFalse(CommandExecutor().cancel())
-
-    def test_ignores_input_race_when_process_exits(self) -> None:
-        executor = CommandExecutor()
-        executor._input_writer = Mock(side_effect=EOFError)
-
-        self.assertFalse(executor.send_input("text"))
-
-    @patch("terminalrunner.runner.sys.platform", "linux")
-    @patch("terminalrunner.runner.os.killpg", create=True)
-    def test_terminates_posix_process_group(self, killpg: Mock) -> None:
-        class Process:
-            pid = 123
-
-        CommandExecutor._terminate(Process())
-
-        killpg.assert_called_once_with(123, signal.SIGTERM)
-
-    def test_escalates_termination_after_grace_period(self) -> None:
-        executor = CommandExecutor()
-        executor._termination_started_at = 1
-        process = Mock()
-
-        with patch.object(executor, "_kill") as kill:
-            executor._escalate_termination_if_needed(process, 2)
-
-        kill.assert_called_once_with(process)
-
-    @unittest.skipIf(
-        sys.platform == "win32", "pywinpty emits resource warnings during test teardown"
-    )
-    def test_sends_terminal_input_to_a_running_command(self) -> None:
+    @patch.object(CommandExecutor, "_run_process")
+    def test_runs_commands_in_order(self, run: Mock) -> None:
         command = CommandDefinition(
             title="Test",
             description="Test command",
-            executable=sys.executable,
-            arguments=(
-                "-c",
-                "import sys; print('ready'); print(sys.stdin.readline().strip())",
+            commands=(
+                CommandStep(argv=("do", "first")),
+                CommandStep(argv=("do", "second")),
             ),
-            timeout_seconds=5,
         )
-        executor = CommandExecutor()
-        output: list[str] = []
-        worker = threading.Thread(target=executor.run, args=(command, output.append))
-        worker.start()
+        run.side_effect = [subprocess.CompletedProcess([], 0)] * 2
 
-        deadline = time.monotonic() + 3
-        while "ready" not in "".join(output) and time.monotonic() < deadline:
-            time.sleep(0.05)
-        self.assertTrue(executor.send_input("answer\r"))
-        worker.join(timeout=5)
+        with patch.object(
+            CommandExecutor,
+            "_build_process_arguments",
+            side_effect=[["do", "first"], ["do", "second"]],
+        ):
+            result = CommandExecutor().run_in_terminal(command)
 
-        self.assertFalse(worker.is_alive())
-        self.assertIn("answer", "".join(output))
+        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(
+            run.call_args_list,
+            [
+                call(["do", "first"]),
+                call(["do", "second"]),
+            ],
+        )
+
+    @patch.object(CommandExecutor, "_run_process")
+    def test_stops_after_a_failed_command(self, run: Mock) -> None:
+        command = CommandDefinition(
+            title="Test",
+            description="Test command",
+            commands=(
+                CommandStep(argv=("do", "first")),
+                CommandStep(argv=("do", "second")),
+            ),
+        )
+        run.return_value = subprocess.CompletedProcess([], 1)
+
+        with patch.object(
+            CommandExecutor,
+            "_build_process_arguments",
+            return_value=["do", "first"],
+        ):
+            result = CommandExecutor().run_in_terminal(command)
+
+        self.assertEqual(result.exit_code, 1)
+        run.assert_called_once_with(["do", "first"])
+
+    @patch("terminalrunner.runner.sys.platform", "win32")
+    @patch(
+        "terminalrunner.runner.shutil.which",
+        return_value=None,
+    )
+    @patch.object(CommandExecutor, "_run_process")
+    def test_runs_direct_windows_command_without_a_shell(
+        self, run: Mock, which: Mock
+    ) -> None:
+        command = CommandDefinition(
+            title="Test",
+            description="Test command",
+            commands=(CommandStep(argv=("tool", "argument with spaces")),),
+        )
+        run.return_value = subprocess.CompletedProcess([], 0)
+
+        result = CommandExecutor().run_in_terminal(command)
+
+        self.assertEqual(result.exit_code, 0)
+        run.assert_called_once_with(["tool", "argument with spaces"])
+
+    @patch("terminalrunner.runner.subprocess.run", side_effect=KeyboardInterrupt)
+    def test_returns_interrupt_exit_code_when_command_is_cancelled(
+        self, run: Mock
+    ) -> None:
+        command = CommandDefinition(
+            title="Test",
+            description="Test command",
+            commands=(CommandStep(argv=("tool",)),),
+        )
+
+        result = CommandExecutor().run_in_terminal(command)
+
+        self.assertEqual(result.exit_code, 130)
+        run.assert_called_once()
+
+    @patch("terminalrunner.runner.subprocess.run", side_effect=KeyboardInterrupt)
+    def test_returns_interrupt_exit_code_when_terminal_is_cancelled(
+        self, run: Mock
+    ) -> None:
+        result = CommandExecutor().open_terminal()
+
+        self.assertEqual(result.exit_code, 130)
+        run.assert_called_once()
+
+    @patch("terminalrunner.runner.sys.platform", "win32")
+    @patch(
+        "terminalrunner.runner.signal.signal", return_value=signal.default_int_handler
+    )
+    @patch("terminalrunner.runner.subprocess.run")
+    def test_keeps_ctrl_c_for_windows_child_processes(
+        self, run: Mock, set_signal_handler: Mock
+    ) -> None:
+        run.return_value = subprocess.CompletedProcess([], 0)
+
+        result = CommandExecutor().open_terminal()
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(set_signal_handler.call_args_list[0].args[0], signal.SIGINT)
+        self.assertEqual(
+            set_signal_handler.call_args_list[1].args,
+            (signal.SIGINT, signal.default_int_handler),
+        )
+
+    @patch("terminalrunner.runner.sys.platform", "win32")
+    @patch(
+        "terminalrunner.runner.shutil.which",
+        return_value=r"C:\Program Files\PowerShell\7\pwsh.exe",
+    )
+    @patch("terminalrunner.runner.subprocess.run")
+    def test_opens_powershell_terminal(self, run: Mock, which: Mock) -> None:
+        run.return_value = subprocess.CompletedProcess([], 0)
+
+        result = CommandExecutor().open_terminal()
+
+        self.assertEqual(result.exit_code, 0)
+        run.assert_called_once_with(
+            [
+                r"C:\Program Files\PowerShell\7\pwsh.exe",
+                "-NoExit",
+                "-Command",
+                "Write-Host 'Press Ctrl+D or type exit to return to TerminalRunner.'; "
+                "Set-PSReadLineKeyHandler -Chord Ctrl+d -ScriptBlock { "
+                "[System.Environment]::Exit(0) }",
+            ],
+            check=False,
+        )
+
+    @patch("terminalrunner.runner.sys.platform", "linux")
+    def test_opens_linux_terminal_with_return_hint(self) -> None:
+        self.assertEqual(
+            CommandExecutor._build_terminal_process_arguments(),
+            [
+                "/bin/sh",
+                "-c",
+                "printf '%s\\n' 'Press Ctrl+D or type exit to return to "
+                "TerminalRunner.'; "
+                "exec /bin/sh -i",
+            ],
+        )

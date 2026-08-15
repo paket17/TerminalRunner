@@ -8,7 +8,6 @@ from pathlib import Path
 @dataclass(frozen=True)
 class AppState:
     theme: str | None = None
-    command_panel_expanded: bool = False
 
 
 def default_state_path() -> Path:
@@ -37,11 +36,7 @@ def load_state(path: Path) -> AppState:
         return AppState()
 
     theme = data.get("theme")
-    expanded = data.get("command_panel_expanded", False)
-    return AppState(
-        theme=theme if isinstance(theme, str) else None,
-        command_panel_expanded=expanded if isinstance(expanded, bool) else False,
-    )
+    return AppState(theme=theme if isinstance(theme, str) else None)
 
 
 def save_state(path: Path, state: AppState) -> None:
@@ -60,7 +55,6 @@ def save_state(path: Path, state: AppState) -> None:
             json.dump(
                 {
                     "theme": state.theme,
-                    "command_panel_expanded": state.command_panel_expanded,
                 },
                 state_file,
                 ensure_ascii=True,

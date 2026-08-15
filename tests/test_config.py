@@ -4,6 +4,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from terminalrunner.config import ConfigurationError, default_config_path, load_commands
+from terminalrunner.models import CommandStep
 
 
 class CommandConfigurationTests(unittest.TestCase):
@@ -54,8 +55,8 @@ class CommandConfigurationTests(unittest.TestCase):
                 """commands:
   - title: Hello
     description: Print a greeting
-    executable: echo hello
-    timeout_seconds: 5
+    commands:
+      - [echo, hello]
 """,
                 encoding="utf-8",
             )
@@ -64,8 +65,23 @@ class CommandConfigurationTests(unittest.TestCase):
 
         self.assertEqual(len(commands), 1)
         self.assertEqual(commands[0].display_command, "echo hello")
-        self.assertIsNone(commands[0].shell_command)
-        self.assertEqual(commands[0].timeout_seconds, 5)
+        self.assertEqual(commands[0].commands, (CommandStep(argv=("echo", "hello")),))
+
+    def test_rejects_a_command_without_a_title(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "commands.yaml"
+            path.write_text(
+                """commands:
+  - commands:
+      - [echo, hello]
+""",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(
+                ConfigurationError, "Command #1 is missing fields: title"
+            ):
+                load_commands(path)
 
     def test_allows_a_missing_description(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -73,7 +89,8 @@ class CommandConfigurationTests(unittest.TestCase):
             path.write_text(
                 """commands:
   - title: No description
-    executable: echo
+    commands:
+      - [echo]
 """,
                 encoding="utf-8",
             )
@@ -89,7 +106,8 @@ class CommandConfigurationTests(unittest.TestCase):
                 """commands:
   - title: Empty description
     description:
-    executable: echo
+    commands:
+      - [echo]
 """,
                 encoding="utf-8",
             )
@@ -113,85 +131,94 @@ class CommandConfigurationTests(unittest.TestCase):
         self.assertTrue(commands[0].is_separator)
         self.assertEqual(commands[0].display_command, "")
 
-    def test_splits_quoted_arguments_in_executable(self) -> None:
+    def test_loads_commands_without_parsing_arguments(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "commands.yaml"
             path.write_text(
                 """commands:
   - title: Greeting
-    executable: echo \"hello world\"
+    commands:
+      - [echo, hello world]
+      - [pwd]
 """,
                 encoding="utf-8",
             )
 
             commands = load_commands(path)
 
-        self.assertEqual(commands[0].executable, "echo")
-        self.assertEqual(commands[0].arguments, ("hello world",))
+        self.assertEqual(
+            commands[0].commands,
+            (CommandStep(argv=("echo", "hello world")), CommandStep(argv=("pwd",))),
+        )
+        self.assertEqual(commands[0].display_command, "echo hello world\npwd")
 
-    def test_loads_folded_command_chain(self) -> None:
+    def test_preserves_literal_quotes_in_arguments(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "commands.yaml"
             path.write_text(
                 """commands:
-  - title: Chained command
-    executable: >-
-      echo first
-      && echo second
+  - title: Search
+    commands:
+      - [rg, '"exact value"', .]
 """,
                 encoding="utf-8",
             )
 
             commands = load_commands(path)
 
-        self.assertEqual(commands[0].display_command, "echo first && echo second")
-        self.assertEqual(commands[0].shell_command, "echo first && echo second")
+        self.assertEqual(
+            commands[0].commands,
+            (CommandStep(argv=("rg", '"exact value"', ".")),),
+        )
 
-    def test_loads_explicit_shell_command(self) -> None:
+    def test_loads_a_shell_command(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "commands.yaml"
             path.write_text(
                 """commands:
-  - title: Pipeline
-    executable: echo hello | grep hello
-    shell: true
+  - title: Shell command
+    commands:
+      - shell: echo first && echo second
 """,
                 encoding="utf-8",
             )
 
             commands = load_commands(path)
 
-        self.assertEqual(commands[0].shell_command, "echo hello | grep hello")
+        self.assertEqual(
+            commands[0].commands,
+            (CommandStep(shell_command="echo first && echo second"),),
+        )
 
-    def test_preserves_windows_path_separators(self) -> None:
+    def test_rejects_a_non_list_commands_value(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "commands.yaml"
             path.write_text(
                 """commands:
-  - title: Windows tool
-    executable: C:\\Tools\\runner.exe --mode local
+  - title: Invalid command
+    commands: echo hello
 """,
                 encoding="utf-8",
             )
 
-            with patch("terminalrunner.config.sys.platform", "win32"):
-                commands = load_commands(path)
+            with self.assertRaisesRegex(ConfigurationError, "must be a non-empty list"):
+                load_commands(path)
 
-        self.assertEqual(commands[0].executable, r"C:\Tools\runner.exe")
-
-    def test_rejects_boolean_timeout(self) -> None:
+    def test_rejects_a_command_with_non_string_arguments(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "commands.yaml"
             path.write_text(
                 """commands:
-  - title: Invalid timeout
-    executable: echo hello
-    timeout_seconds: true
+  - title: Invalid command
+    commands:
+      - [tool, true]
 """,
                 encoding="utf-8",
             )
 
-            with self.assertRaisesRegex(ConfigurationError, "timeout_seconds"):
+            with self.assertRaisesRegex(
+                ConfigurationError, "must contain only strings"
+            ):
                 load_commands(path)
 
     def test_rejects_directory_as_configuration(self) -> None:
@@ -200,23 +227,6 @@ class CommandConfigurationTests(unittest.TestCase):
                 ConfigurationError, "Unable to read configuration"
             ):
                 load_commands(Path(directory))
-
-    def test_rejects_working_directory(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "commands.yaml"
-            path.write_text(
-                """commands:
-  - title: Legacy directory
-    executable: echo hello
-    working_directory: .
-""",
-                encoding="utf-8",
-            )
-
-            with self.assertRaisesRegex(
-                ConfigurationError, "unknown fields: working_directory"
-            ):
-                load_commands(path)
 
     def test_rejects_unknown_fields(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -232,6 +242,37 @@ class CommandConfigurationTests(unittest.TestCase):
             with self.assertRaisesRegex(
                 ConfigurationError, "unknown fields: executabl"
             ):
+                load_commands(path)
+
+    def test_rejects_non_string_unknown_fields(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "commands.yaml"
+            path.write_text(
+                """commands:
+  - title: Invalid command
+    1: value
+""",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(
+                ConfigurationError, "unknown fields: 1"
+            ):
+                load_commands(path)
+
+    def test_rejects_a_whitespace_only_executable(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "commands.yaml"
+            path.write_text(
+                """commands:
+  - title: Invalid command
+    commands:
+      - ['   ']
+""",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ConfigurationError, "empty executable"):
                 load_commands(path)
 
     def test_rejects_separator_with_command_fields(self) -> None:

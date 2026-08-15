@@ -1,12 +1,10 @@
-import ctypes
 import os
 from pathlib import Path
-import shlex
 import sys
 
 import yaml
 
-from .models import CommandDefinition
+from .models import CommandDefinition, CommandStep
 
 
 class ConfigurationError(ValueError):
@@ -52,109 +50,77 @@ def load_commands(path: Path) -> tuple[CommandDefinition, ...]:
 
 
 def _parse_command(entry: dict[str, object], index: int) -> CommandDefinition:
-    allowed_fields = {"title", "description", "executable", "timeout_seconds", "shell"}
+    allowed_fields = {"title", "description", "commands"}
     unknown_fields = entry.keys() - allowed_fields
     if unknown_fields:
-        unknown_field_names = ", ".join(sorted(unknown_fields))
+        unknown_field_names = ", ".join(
+            str(field) for field in sorted(unknown_fields, key=str)
+        )
         raise ConfigurationError(
             f"Command #{index} has unknown fields: {unknown_field_names}"
         )
 
-    required = ("title",)
-    fields: dict[str, str] = {}
-    missing: list[str] = []
-    for name in required:
-        value = entry.get(name)
-        if not isinstance(value, str) or not value.strip():
-            missing.append(name)
-        else:
-            fields[name] = value
-    if missing:
-        raise ConfigurationError(
-            f"Command #{index} is missing fields: {', '.join(missing)}"
-        )
+    title = entry.get("title")
+    if not isinstance(title, str) or not title.strip():
+        raise ConfigurationError(f"Command #{index} is missing fields: title")
 
     description = entry.get("description", "")
     if description is None:
         description = ""
     if not isinstance(description, str):
         raise ConfigurationError(
-            f"description for command '{fields['title']}' must be a string."
+            f"description for command '{title}' must be a string."
         )
 
-    executable = entry.get("executable")
-    if executable is None:
+    commands = entry.get("commands")
+    if commands is None:
         if set(entry) != {"title"}:
             raise ConfigurationError(
-                f"Separator '{fields['title']}' must contain only a title."
+                f"Separator '{title}' must contain only a title."
             )
         return CommandDefinition(
-            title=fields["title"],
+            title=title,
             description=description,
-            executable="",
-            arguments=(),
-            timeout_seconds=0,
+            commands=(),
             is_separator=True,
         )
-    if not isinstance(executable, str) or not executable.strip():
+    if not isinstance(commands, list) or not commands:
         raise ConfigurationError(
-            f"Command '{fields['title']}' has an empty executable."
-        )
-    fields["executable"] = executable
-
-    timeout = entry.get("timeout_seconds", 3600)
-    if isinstance(timeout, bool) or not isinstance(timeout, int) or timeout <= 0:
-        raise ConfigurationError(
-            "timeout_seconds for command "
-            f"'{fields['title']}' must be a positive number."
+            f"commands for command '{title}' must be a non-empty list."
         )
 
-    shell = entry.get("shell", "&&" in fields["executable"])
-    if not isinstance(shell, bool):
-        raise ConfigurationError(
-            f"shell for command '{fields['title']}' must be true or false."
-        )
-    if shell:
-        return CommandDefinition(
-            title=fields["title"],
-            description=description,
-            executable="",
-            arguments=(),
-            timeout_seconds=timeout,
-            shell_command=fields["executable"],
-        )
+    command_steps: list[CommandStep] = []
+    for command_index, command in enumerate(commands, start=1):
+        if isinstance(command, dict):
+            if set(command) != {"shell"}:
+                raise ConfigurationError(
+                    f"Shell command #{command_index} for '{title}' must contain "
+                    "only shell."
+                )
+            shell_command = command["shell"]
+            if not isinstance(shell_command, str) or not shell_command.strip():
+                raise ConfigurationError(
+                    f"shell for command #{command_index} for '{title}' must be "
+                    "a non-empty string."
+                )
+            command_steps.append(CommandStep(shell_command=shell_command))
+            continue
+        if not isinstance(command, list) or not command:
+            raise ConfigurationError(
+                f"Command #{command_index} for '{title}' must be a non-empty list."
+            )
+        if not all(isinstance(argument, str) for argument in command):
+            raise ConfigurationError(
+                f"Command #{command_index} for '{title}' must contain only strings."
+            )
+        if not command[0].strip():
+            raise ConfigurationError(
+                f"Command #{command_index} for '{title}' has an empty executable."
+            )
+        command_steps.append(CommandStep(argv=tuple(command)))
 
-    try:
-        command_parts = _split_direct_command(fields["executable"])
-    except ValueError as error:
-        raise ConfigurationError(
-            f"Invalid executable for command '{fields['title']}': {error}"
-        ) from error
-    if not command_parts:
-        raise ConfigurationError(
-            f"Command '{fields['title']}' has an empty executable."
-        )
     return CommandDefinition(
-        title=fields["title"],
+        title=title,
         description=description,
-        executable=command_parts[0],
-        arguments=tuple(command_parts[1:]),
-        timeout_seconds=timeout,
+        commands=tuple(command_steps),
     )
-
-
-def _split_direct_command(command: str) -> list[str]:
-    if sys.platform != "win32":
-        return shlex.split(command)
-
-    argument_count = ctypes.c_int()
-    command_line_to_argv = ctypes.windll.shell32.CommandLineToArgvW
-    command_line_to_argv.argtypes = [ctypes.c_wchar_p, ctypes.POINTER(ctypes.c_int)]
-    command_line_to_argv.restype = ctypes.POINTER(ctypes.c_wchar_p)
-    arguments = command_line_to_argv(command, ctypes.byref(argument_count))
-    if not arguments:
-        raise ValueError("Unable to parse Windows command line.")
-    try:
-        return [arguments[index] for index in range(argument_count.value)]
-    finally:
-        ctypes.windll.kernel32.LocalFree(arguments)

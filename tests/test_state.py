@@ -10,7 +10,7 @@ class StateTests(unittest.TestCase):
     def test_round_trips_state(self) -> None:
         with TemporaryDirectory() as directory:
             path = Path(directory) / "nested" / "state.json"
-            state = AppState(theme="textual-light", command_panel_expanded=True)
+            state = AppState(theme="textual-light")
 
             save_state(path, state)
 
@@ -20,7 +20,7 @@ class StateTests(unittest.TestCase):
         with TemporaryDirectory() as directory:
             path = Path(directory) / "state.json"
             path.write_text(
-                json.dumps({"theme": 3, "command_panel_expanded": "yes"}),
+                json.dumps({"theme": 3}),
                 encoding="utf-8",
             )
 
