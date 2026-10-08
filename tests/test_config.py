@@ -290,3 +290,39 @@ class CommandConfigurationTests(unittest.TestCase):
                 ConfigurationError, "Separator 'Invalid separator'"
             ):
                 load_commands(path)
+
+    def test_loads_command_with_ignore_errors(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "commands.yaml"
+            path.write_text(
+                """commands:
+  - title: Command with ignore_errors
+    ignore_errors: true
+    commands:
+      - [echo, hello]
+""",
+                encoding="utf-8",
+            )
+
+            commands = load_commands(path)
+
+        self.assertTrue(commands[0].ignore_errors)
+
+    def test_rejects_non_boolean_ignore_errors(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "commands.yaml"
+            path.write_text(
+                """commands:
+  - title: Invalid command
+    ignore_errors: "yes"
+    commands:
+      - [echo, hello]
+""",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(
+                ConfigurationError,
+                "ignore_errors for command 'Invalid command' must be a boolean",
+            ):
+                load_commands(path)

@@ -50,7 +50,7 @@ def load_commands(path: Path) -> tuple[CommandDefinition, ...]:
 
 
 def _parse_command(entry: dict[str, object], index: int) -> CommandDefinition:
-    allowed_fields = {"title", "description", "commands"}
+    allowed_fields = {"title", "description", "commands", "ignore_errors"}
     unknown_fields = entry.keys() - allowed_fields
     if unknown_fields:
         unknown_field_names = ", ".join(
@@ -70,6 +70,12 @@ def _parse_command(entry: dict[str, object], index: int) -> CommandDefinition:
     if not isinstance(description, str):
         raise ConfigurationError(
             f"description for command '{title}' must be a string."
+        )
+
+    ignore_errors = entry.get("ignore_errors", False)
+    if not isinstance(ignore_errors, bool):
+        raise ConfigurationError(
+            f"ignore_errors for command '{title}' must be a boolean."
         )
 
     commands = entry.get("commands")
@@ -123,4 +129,5 @@ def _parse_command(entry: dict[str, object], index: int) -> CommandDefinition:
         title=title,
         description=description,
         commands=tuple(command_steps),
+        ignore_errors=ignore_errors,
     )

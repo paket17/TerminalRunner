@@ -139,6 +139,176 @@ class CommandExecutorTests(unittest.TestCase):
         self.assertEqual(result.exit_code, 1)
         run.assert_called_once_with(["do", "first"])
 
+    @patch.object(CommandExecutor, "_run_process")
+    def test_continues_after_a_failed_command_when_ignore_errors(
+        self, run: Mock
+    ) -> None:
+        command = CommandDefinition(
+            title="Test",
+            description="Test command",
+            commands=(
+                CommandStep(argv=("do", "first")),
+                CommandStep(argv=("do", "second")),
+            ),
+            ignore_errors=True,
+        )
+        run.side_effect = [
+            subprocess.CompletedProcess([], 1),
+            subprocess.CompletedProcess([], 0),
+        ]
+
+        with patch.object(
+            CommandExecutor,
+            "_build_process_arguments",
+            side_effect=[["do", "first"], ["do", "second"]],
+        ):
+            result = CommandExecutor().run_in_terminal(command)
+
+        self.assertEqual(result.exit_code, 1)
+        self.assertEqual(
+            run.call_args_list,
+            [
+                call(["do", "first"]),
+                call(["do", "second"]),
+            ],
+        )
+
+    @patch.object(CommandExecutor, "_run_process")
+    def test_preserves_first_failure_when_multiple_fail_with_ignore_errors(
+        self, run: Mock
+    ) -> None:
+        command = CommandDefinition(
+            title="Test",
+            description="Test command",
+            commands=(
+                CommandStep(argv=("do", "first")),
+                CommandStep(argv=("do", "second")),
+            ),
+            ignore_errors=True,
+        )
+        run.side_effect = [
+            subprocess.CompletedProcess([], 2),
+            subprocess.CompletedProcess([], 3),
+        ]
+
+        with patch.object(
+            CommandExecutor,
+            "_build_process_arguments",
+            side_effect=[["do", "first"], ["do", "second"]],
+        ):
+            result = CommandExecutor().run_in_terminal(command)
+
+        self.assertEqual(result.exit_code, 2)
+        self.assertEqual(
+            run.call_args_list,
+            [
+                call(["do", "first"]),
+                call(["do", "second"]),
+            ],
+        )
+
+    @patch.object(CommandExecutor, "_run_process")
+    def test_returns_success_when_ignore_errors_and_all_commands_succeed(
+        self, run: Mock
+    ) -> None:
+        command = CommandDefinition(
+            title="Test",
+            description="Test command",
+            commands=(
+                CommandStep(argv=("do", "first")),
+                CommandStep(argv=("do", "second")),
+            ),
+            ignore_errors=True,
+        )
+        run.side_effect = [
+            subprocess.CompletedProcess([], 0),
+            subprocess.CompletedProcess([], 0),
+        ]
+
+        with patch.object(
+            CommandExecutor,
+            "_build_process_arguments",
+            side_effect=[["do", "first"], ["do", "second"]],
+        ):
+            result = CommandExecutor().run_in_terminal(command)
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(
+            run.call_args_list,
+            [
+                call(["do", "first"]),
+                call(["do", "second"]),
+            ],
+        )
+
+    @patch.object(CommandExecutor, "_run_process")
+    def test_continues_when_command_fails_to_start_with_ignore_errors(
+        self, run: Mock
+    ) -> None:
+        command = CommandDefinition(
+            title="Test",
+            description="Test command",
+            commands=(
+                CommandStep(argv=("invalid",)),
+                CommandStep(argv=("do", "second")),
+            ),
+            ignore_errors=True,
+        )
+        run.side_effect = [
+            OSError("file not found"),
+            subprocess.CompletedProcess([], 0),
+        ]
+
+        with patch.object(
+            CommandExecutor,
+            "_build_process_arguments",
+            side_effect=[["invalid"], ["do", "second"]],
+        ):
+            result = CommandExecutor().run_in_terminal(command)
+
+        self.assertEqual(result.error, "Unable to start 'invalid': file not found")
+        self.assertEqual(
+            run.call_args_list,
+            [
+                call(["invalid"]),
+                call(["do", "second"]),
+            ],
+        )
+
+    @patch.object(CommandExecutor, "_run_process")
+    def test_continues_after_failed_shell_command_when_ignore_errors(
+        self, run: Mock
+    ) -> None:
+        command = CommandDefinition(
+            title="Test",
+            description="Test command",
+            commands=(
+                CommandStep(shell_command="exit 1"),
+                CommandStep(shell_command="echo second"),
+            ),
+            ignore_errors=True,
+        )
+        run.side_effect = [
+            subprocess.CompletedProcess([], 1),
+            subprocess.CompletedProcess([], 0),
+        ]
+
+        with patch.object(
+            CommandExecutor,
+            "_build_shell_process_arguments",
+            side_effect=[["sh", "-c", "exit 1"], ["sh", "-c", "echo second"]],
+        ):
+            result = CommandExecutor().run_in_terminal(command)
+
+        self.assertEqual(result.exit_code, 1)
+        self.assertEqual(
+            run.call_args_list,
+            [
+                call(["sh", "-c", "exit 1"]),
+                call(["sh", "-c", "echo second"]),
+            ],
+        )
+
     @patch("terminalrunner.runner.sys.platform", "win32")
     @patch(
         "terminalrunner.runner.shutil.which",

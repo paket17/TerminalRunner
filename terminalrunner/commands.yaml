@@ -16,11 +16,36 @@ commands:
     commands:
       - shell: 'echo Linux user: $USER'
 
+  - title: PowerShell cmdlet example
+    description: Runs PowerShell commands directly via powershell / pwsh.
+    commands:
+      - [powershell, -NoProfile, -Command, 'Write-Host "PowerShell user: $env:USERNAME"']
+
+  - title: Multi-step shell
+    description: Runs multiple shell commands in order.
+    commands:
+      - shell: 'echo First step'
+      - shell: 'echo Second step'
+
+  - title: Multiline folded shell
+    description: Uses YAML folded scalar (>) to split long command lines.
+    commands:
+      - shell: >
+          echo Step A &&
+          echo Step B
+
   - title: Run sequential commands
     description: Runs two processes in order.
     commands:
       - [py, -c, 'print("First step")']
       - [py, -c, 'print("Second step")']
+
+  - title: Sequential with ignore_errors
+    description: Runs all steps even if a previous step fails.
+    ignore_errors: true
+    commands:
+      - [py, -c, 'raise SystemExit(1)']
+      - [py, -c, 'print("Executed despite previous failure")']
 
   - title: Expected failure
     description: Exits with code 1 to verify failure reporting.

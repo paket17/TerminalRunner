@@ -29,6 +29,7 @@ class CommandExecutor:
         return CommandResult(exit_code=completed_process.returncode)
 
     def run_in_terminal(self, command: CommandDefinition) -> CommandResult:
+        first_failure: CommandResult | None = None
         for command_step in command.commands:
             try:
                 if command_step.shell_command is not None:
@@ -41,12 +42,21 @@ class CommandExecutor:
             except KeyboardInterrupt:
                 return CommandResult(exit_code=130)
             except (OSError, ValueError) as error:
-                return CommandResult(
+                failure = CommandResult(
                     error=f"Unable to start '{command_step.display_command}': {error}"
                 )
+                if not command.ignore_errors:
+                    return failure
+                if first_failure is None:
+                    first_failure = failure
+                continue
             if completed_process.returncode != 0:
-                return CommandResult(exit_code=completed_process.returncode)
-        return CommandResult(exit_code=0)
+                failure = CommandResult(exit_code=completed_process.returncode)
+                if not command.ignore_errors:
+                    return failure
+                if first_failure is None:
+                    first_failure = failure
+        return first_failure or CommandResult(exit_code=0)
 
     @staticmethod
     def _build_process_arguments(command_arguments: tuple[str, ...]) -> list[str]:

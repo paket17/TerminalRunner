@@ -21,6 +21,7 @@ class CommandDefinition:
     description: str
     commands: tuple[CommandStep, ...]
     is_separator: bool = False
+    ignore_errors: bool = False
 
     @property
     def display_command(self) -> str:
