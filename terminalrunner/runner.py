@@ -2,6 +2,7 @@ import shutil
 import signal
 import subprocess
 import sys
+import textwrap
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -117,7 +118,12 @@ class CommandExecutor:
     @staticmethod
     def _build_terminal_process_arguments() -> list[str]:
         if sys.platform == "win32":
-            pwsh_path = shutil.which("pwsh.exe") or shutil.which("pwsh")
+            pwsh_path = (
+                shutil.which("pwsh.exe")
+                or shutil.which("pwsh")
+                or shutil.which("powershell.exe")
+                or shutil.which("powershell")
+            )
             if pwsh_path is not None:
                 return [
                     pwsh_path,
@@ -142,7 +148,35 @@ class CommandExecutor:
 
     @staticmethod
     def _powershell_return_handler() -> str:
-        return (
-            "Set-PSReadLineKeyHandler -Chord Ctrl+d -ScriptBlock { "
-            "[System.Environment]::Exit(0) }"
-        )
+        # PSReadLine bug #1393: Set-PSReadLineKeyHandler resolves key chords
+        # against the console layout active at shell startup (via Win32 ToUnicodeEx).
+        # When started in a Russian layout, Ctrl+D maps to 'Ctrl+в', so switching to
+        # English later causes Ctrl+D to be ignored. Conversely, starting in English
+        # breaks Ctrl+D when switched to Russian.
+        #
+        # Because PSReadLine lacks a public API to bind raw virtual keys (VK_D),
+        # we register the handler normally, then duplicate it across both Latin
+        # and Cyrillic chords directly in PSReadLine's internal dispatch table.
+        return textwrap.dedent(
+            """
+            Import-Module PSReadLine -ErrorAction SilentlyContinue;
+            Set-PSReadLineKeyHandler -Chord Ctrl+d -ScriptBlock {
+                [Environment]::Exit(0)
+            };
+            try {
+                $flags = [Reflection.BindingFlags]'NonPublic,Static,Instance';
+                $engine = [Microsoft.PowerShell.PSConsoleReadLine];
+                $inst = $engine.GetField('_singleton', $flags).GetValue($null);
+                $table = $inst.GetType().GetField(
+                    '_dispatchTable', $flags
+                ).GetValue($inst);
+                $keyType = $engine.Assembly.GetType('Microsoft.PowerShell.PSKeyInfo');
+                $ctor = $keyType.GetConstructor($flags, $null, @([string]), $null);
+                $action = ($table.Values |
+                    Where-Object { $_.BriefDescription -eq 'CustomAction' })[0];
+                foreach ($chord in @('Ctrl+d', 'Ctrl+в', 'Ctrl+D', 'Ctrl+В')) {
+                    $table[$ctor.Invoke(@($chord))] = $action
+                }
+            } catch {}
+            """
+        ).strip()

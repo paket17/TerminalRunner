@@ -462,6 +462,17 @@ class TerminalRunnerAppTests(unittest.IsolatedAsyncioTestCase):
         suspend.assert_called_once()
         app.executor.open_terminal.assert_called_once_with()
 
+    async def test_ctrl_cyrillic_d_opens_an_interactive_terminal(self) -> None:
+        app = TerminalRunnerApp(CATALOG_PATH)
+        app.executor.open_terminal = Mock(return_value=CommandResult(exit_code=0))
+
+        async with app.run_test() as pilot:
+            with patch.object(app, "suspend") as suspend:
+                await pilot.press("ctrl+в")
+
+        suspend.assert_called_once()
+        app.executor.open_terminal.assert_called_once_with()
+
     async def test_clicking_background_restores_command_navigation(self) -> None:
         config_path = CATALOG_PATH
         app = TerminalRunnerApp(config_path)

@@ -391,11 +391,44 @@ class CommandExecutorTests(unittest.TestCase):
                 "-NoExit",
                 "-Command",
                 "Write-Host 'Press Ctrl+D or type exit to return to TerminalRunner.'; "
-                "Set-PSReadLineKeyHandler -Chord Ctrl+d -ScriptBlock { "
-                "[System.Environment]::Exit(0) }",
+                f"{CommandExecutor._powershell_return_handler()}",
             ],
             check=False,
         )
+
+    @patch("terminalrunner.runner.sys.platform", "win32")
+    @patch(
+        "terminalrunner.runner.shutil.which",
+        side_effect=lambda name: (
+            r"C:\WINDOWS\System32\WindowsPowerShell\v1.0\powershell.exe"
+            if "powershell" in name
+            else None
+        ),
+    )
+    @patch("terminalrunner.runner.subprocess.run")
+    def test_falls_back_to_windows_powershell(self, run: Mock, which: Mock) -> None:
+        run.return_value = subprocess.CompletedProcess([], 0)
+
+        result = CommandExecutor().open_terminal()
+
+        self.assertEqual(result.exit_code, 0)
+        run.assert_called_once_with(
+            [
+                r"C:\WINDOWS\System32\WindowsPowerShell\v1.0\powershell.exe",
+                "-NoExit",
+                "-Command",
+                "Write-Host 'Press Ctrl+D or type exit to return to TerminalRunner.'; "
+                f"{CommandExecutor._powershell_return_handler()}",
+            ],
+            check=False,
+        )
+
+    def test_powershell_return_handler_binds_latin_and_cyrillic_chords(self) -> None:
+        handler = CommandExecutor._powershell_return_handler()
+        self.assertIn("Ctrl+d", handler)
+        self.assertIn("Ctrl+в", handler)
+        self.assertIn("Ctrl+D", handler)
+        self.assertIn("Ctrl+В", handler)
 
     @patch("terminalrunner.runner.sys.platform", "linux")
     def test_opens_linux_terminal_with_return_hint(self) -> None:
