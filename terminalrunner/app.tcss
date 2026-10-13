@@ -27,6 +27,7 @@ Screen, #command-list, #command-info {
     height: 1fr;
     margin-top: 1;
     width: 100%;
+    visibility: visible;
     overflow-x: auto;
     scrollbar-color: $text-muted;
     scrollbar-color-hover: $text;

@@ -183,6 +183,40 @@ class TerminalRunnerAppTests(unittest.IsolatedAsyncioTestCase):
             self.assertGreater(button.size.height, 0)
             self.assertIs(app.focused, button)
 
+    async def test_dismissing_command_palette_keeps_command_buttons_visible(
+        self,
+    ) -> None:
+        app = TerminalRunnerApp(CATALOG_PATH, self.state_path)
+
+        async with app.run_test() as pilot:
+            await pilot.press("ctrl+p")
+            await asyncio.sleep(0.3)
+            await pilot.press("escape")
+            await asyncio.sleep(0.3)
+
+            command_list = app.query_one("#command-list")
+            app.update_styles(command_list)
+
+            self.assertNotIsInstance(app.screen, CommandPalette)
+            self.assertTrue(command_list.visible)
+            self.assertEqual(command_list.styles.visibility, "visible")
+            button = app.query_one("#command-1", Button)
+            self.assertTrue(button.visible)
+
+    async def test_resizing_during_command_info_keeps_info_panel_focused(self) -> None:
+        app = TerminalRunnerApp(CATALOG_PATH, self.state_path)
+
+        async with app.run_test(size=(80, 24)) as pilot:
+            await pilot.press("f1")
+            self.assertTrue(app.query_one(CommandInfoPanel).display)
+            self.assertIs(app.focused, app.query_one("#command-info-close", Button))
+
+            await pilot.resize_terminal(80, 30)
+            await pilot.pause()
+
+            self.assertTrue(app.query_one(CommandInfoPanel).display)
+            self.assertIs(app.focused, app.query_one("#command-info-close", Button))
+
     async def test_left_and_right_switch_columns(self) -> None:
         config_path = CATALOG_PATH
         app = TerminalRunnerApp(config_path, self.state_path)

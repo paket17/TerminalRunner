@@ -52,7 +52,7 @@ class CommandInfoPanel(Vertical):
             event.stop()
 
 
-class CommandList(Horizontal):
+class CommandGrid(Horizontal):
     """A horizontally scrolling command grid controlled by the mouse wheel."""
 
     def _on_mouse_scroll_up(self, event: MouseScrollUp) -> None:
@@ -123,7 +123,7 @@ class TerminalRunnerApp(App[None]):
 
         with Vertical(id="body"):
             yield Static("Commands", classes="panel-title")
-            yield CommandList(id="command-list")
+            yield CommandGrid(id="command-list")
             yield CommandInfoPanel(self.commands[0], self.action_close_command_info)
         with Vertical(id="command-summary"):
             with Vertical(id="command-summary-content"):
@@ -190,7 +190,7 @@ class TerminalRunnerApp(App[None]):
             return
         try:
             command_info = self.query_one(CommandInfoPanel)
-            command_list = self.query_one("#command-list", CommandList)
+            command_list = self.query_one("#command-list", CommandGrid)
         except NoMatches:
             return
         if command_info.display:
@@ -265,7 +265,7 @@ class TerminalRunnerApp(App[None]):
             panel.query_one("#command-info-command", Static).update(
                 command.display_command
             )
-            self.query_one("#command-list", CommandList).display = False
+            self.query_one("#command-list", CommandGrid).display = False
             panel.display = True
             panel.query_one("#command-info-close", Button).focus()
 
@@ -273,7 +273,7 @@ class TerminalRunnerApp(App[None]):
         save_state(self.state_path, AppState(theme=self.theme))
 
     async def _layout_commands(self, command_rows: int) -> None:
-        command_list = self.query_one("#command-list", CommandList)
+        command_list = self.query_one("#command-list", CommandGrid)
         if command_rows == self.command_rows:
             return
 
@@ -307,7 +307,8 @@ class TerminalRunnerApp(App[None]):
                 f"#command-{self.selected_index}", Button
             )
             selected_button.add_class("is-selected")
-            selected_button.focus()
+            if not self._command_info_is_open():
+                selected_button.focus()
 
     @staticmethod
     def _command_rows_for_height(screen_height: int) -> int:
@@ -316,7 +317,7 @@ class TerminalRunnerApp(App[None]):
     def action_close_command_info(self) -> None:
         if self.configuration_error:
             return
-        self.query_one("#command-list", CommandList).display = True
+        self.query_one("#command-list", CommandGrid).display = True
         self.query_one("#command-summary", Vertical).display = True
         self.query_one(CommandInfoPanel).display = False
         if self.selected_index is not None:
