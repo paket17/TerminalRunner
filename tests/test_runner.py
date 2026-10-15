@@ -117,6 +117,27 @@ class CommandExecutorTests(unittest.TestCase):
             ],
         )
 
+    @patch("builtins.print")
+    @patch.object(CommandExecutor, "_run_process")
+    def test_prints_command_before_executing(
+        self, run: Mock, mock_print: Mock
+    ) -> None:
+        command = CommandDefinition(
+            title="Test",
+            description="Test command",
+            commands=(CommandStep(argv=("echo", "hello")),),
+        )
+        run.return_value = subprocess.CompletedProcess([], 0)
+
+        with patch.object(
+            CommandExecutor,
+            "_build_process_arguments",
+            return_value=["echo", "hello"],
+        ):
+            CommandExecutor().run_in_terminal(command)
+
+        mock_print.assert_called_once_with("echo hello", flush=True)
+
     @patch.object(CommandExecutor, "_run_process")
     def test_stops_after_a_failed_command(self, run: Mock) -> None:
         command = CommandDefinition(

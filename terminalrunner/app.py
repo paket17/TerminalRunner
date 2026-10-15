@@ -135,7 +135,6 @@ class TerminalRunnerApp(App[None]):
                     yield Static("", id="command-summary-command")
         with Horizontal(id="status-bar"):
             with Vertical(id="status"):
-                yield Static("", id="status-spacer")
                 with Horizontal(id="status-line"):
                     yield Static("  ", id="status-message")
                     yield Static("", id="status-space")
@@ -241,6 +240,7 @@ class TerminalRunnerApp(App[None]):
             started_at,
             datetime.now(),
             command.description,
+            title=command.title,
         )
 
     def action_open_terminal(self) -> None:
@@ -312,7 +312,7 @@ class TerminalRunnerApp(App[None]):
 
     @staticmethod
     def _command_rows_for_height(screen_height: int) -> int:
-        return max(screen_height - 13, 1)
+        return max(screen_height - 12, 1)
 
     def action_close_command_info(self) -> None:
         if self.configuration_error:
@@ -345,9 +345,12 @@ class TerminalRunnerApp(App[None]):
         started_at: datetime | None = None,
         finished_at: datetime | None = None,
         description: str | None = None,
+        title: str | None = None,
     ) -> None:
         result_marker = "❌" if self._result_is_error(result) else "✅"
-        message = f"{result_marker} View command output in the terminal."
+        terminal_hint = "View command output in the terminal."
+        command_label = f"{title}: {terminal_hint}" if title else terminal_hint
+        message = f"{result_marker} {command_label}"
         tooltip = description
         if started_at is not None and finished_at is not None:
             duration = str(finished_at - started_at).split(".", maxsplit=1)[0]

@@ -165,7 +165,7 @@ Screen, #command-list, #command-info {
 }
 
 #status-bar {
-    height: 3;
+    height: 2;
     padding: 0 1;
     background: $surface-darken-1;
     border-bottom: solid $panel;
@@ -173,10 +173,6 @@ Screen, #command-list, #command-info {
 
 #status {
     width: 1fr;
-    height: 2;
-}
-
-#status-spacer {
     height: 1;
 }
 

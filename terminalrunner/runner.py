@@ -32,6 +32,8 @@ class CommandExecutor:
     def run_in_terminal(self, command: CommandDefinition) -> CommandResult:
         first_failure: CommandResult | None = None
         for command_step in command.commands:
+            if command_step.display_command:
+                print(command_step.display_command, flush=True)
             try:
                 if command_step.shell_command is not None:
                     process_arguments = self._build_shell_process_arguments(

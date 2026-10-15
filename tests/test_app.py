@@ -341,6 +341,24 @@ class TerminalRunnerAppTests(unittest.IsolatedAsyncioTestCase):
             "status-error",
         )
 
+    def test_marks_command_success_with_title(self) -> None:
+        app = TerminalRunnerApp()
+        app._set_status = Mock()
+
+        app._finish_command(
+            CommandResult(exit_code=0),
+            datetime(2026, 8, 14, 9, 30),
+            datetime(2026, 8, 14, 9, 31),
+            "Full command description.",
+            title="Build Project",
+        )
+
+        app._set_status.assert_called_once_with(
+            "🕒 09:31:00\n✅ Build Project: View command output in the terminal.",
+            "Started 09:30:00 | Finished 09:31:00 | Duration 0:01:00",
+            "status-success",
+        )
+
     async def test_marks_title_after_command_failure(self) -> None:
         config_path = CATALOG_PATH
         app = TerminalRunnerApp(config_path)
@@ -479,6 +497,10 @@ class TerminalRunnerAppTests(unittest.IsolatedAsyncioTestCase):
             self.assertNotIn(selected_command.description, tooltip)
             self.assertEqual(app.query_one("#status-time").tooltip, tooltip)
             self.assertEqual(app.title, "✅ TerminalRunner")
+            self.assertEqual(
+                str(app.query_one("#status-message").render()),
+                f"✅ {selected_command.title}: View command output in the terminal.",
+            )
 
         suspend.assert_called_once()
         selected_command = app._selected_command()
