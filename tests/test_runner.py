@@ -136,7 +136,7 @@ class CommandExecutorTests(unittest.TestCase):
         ):
             CommandExecutor().run_in_terminal(command)
 
-        mock_print.assert_called_once_with("echo hello", flush=True)
+        mock_print.assert_called_once_with("\necho hello", flush=True)
 
     @patch.object(CommandExecutor, "_run_process")
     def test_stops_after_a_failed_command(self, run: Mock) -> None:
