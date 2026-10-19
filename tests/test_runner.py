@@ -450,6 +450,7 @@ class CommandExecutorTests(unittest.TestCase):
         self.assertIn("Ctrl+в", handler)
         self.assertIn("Ctrl+D", handler)
         self.assertIn("Ctrl+В", handler)
+        self.assertIn("[Console]::WriteLine()", handler)
 
     @patch("terminalrunner.runner.sys.platform", "linux")
     def test_opens_linux_terminal_with_return_hint(self) -> None:

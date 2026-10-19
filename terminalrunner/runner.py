@@ -163,6 +163,7 @@ class CommandExecutor:
             """
             Import-Module PSReadLine -ErrorAction SilentlyContinue;
             Set-PSReadLineKeyHandler -Chord Ctrl+d -ScriptBlock {
+                [Console]::WriteLine();
                 [Environment]::Exit(0)
             };
             try {
