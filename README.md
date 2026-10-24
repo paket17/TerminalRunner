@@ -1,12 +1,14 @@
 # TerminalRunner
 
-TerminalRunner - кроссплатформенный TUI-лаунчер для запуска заранее настроенных команд в обычном терминале.
+[🇷🇺 Читать на русском](README.ru.md)
+
+TerminalRunner is a cross-platform TUI launcher for running preconfigured commands in a standard terminal.
 <img width="1100" height="620" alt="image" src="https://github.com/user-attachments/assets/d3ea13e9-3582-4be6-95bb-1e848a36278c" />
 
 
-## Быстрый старт
+## Quick Start
 
-Нужен Python 3.11 или новее.
+Requires Python 3.11 or newer.
 
 ### Windows
 
@@ -22,117 +24,117 @@ python3 -m pip install .
 terminalrunner
 ```
 
-Для Linux используйте Linux-пути и команды в своём `commands.yaml`.
+On Linux, use Linux paths and commands in your `commands.yaml`.
 
-## Использование
+## Usage
 
-1. Запустите `terminalrunner`.
-2. Выберите команду стрелками, `Tab`, `Shift+Tab` или мышью.
-3. Нажмите `Enter` или кнопку команды для запуска.
-4. Приложение временно уступит экран терминалу и вернётся после завершения команды. В статусе отобразятся результат и длительность; вывод команды остаётся в терминале.
+1. Launch `terminalrunner`.
+2. Select a command using arrow keys, `Tab`, `Shift+Tab`, or the mouse.
+3. Press `Enter` or click the command button to run it.
+4. The application temporarily yields the screen to the terminal and returns once the command finishes. The status bar displays the result and execution duration; the command's output remains in the terminal.
 
-### Горячие клавиши
+### Keybindings
 
-| Клавиша | Действие |
+| Key | Action |
 | --- | --- |
-| `Enter` | Запустить выбранную команду |
-| `F1` | Открыть или закрыть окно информации о команде |
-| `Esc` | Закрыть окно информации о команде |
-| `Ctrl+D` | Открыть интерактивный терминал |
-| `Ctrl+Q` | Закрыть приложение |
+| `Enter` | Run selected command |
+| `F1` | Open or close the command details popup |
+| `Esc` | Close the command details popup |
+| `Ctrl+D` | Open an interactive terminal shell |
+| `Ctrl+Q` | Quit application |
 
-`Ctrl+D` открывает отдельную интерактивную оболочку. В PowerShell и Linux `/bin/sh` нажмите `Ctrl+D` или введите `exit`, чтобы вернуться в TerminalRunner. Если PowerShell 7 (`pwsh`) недоступен в Windows, запускается `cmd.exe`; в нём используйте `exit`.
+`Ctrl+D` opens a separate interactive shell. In PowerShell and Linux `/bin/sh`, press `Ctrl+D` or type `exit` to return to TerminalRunner. If PowerShell 7 (`pwsh`) is unavailable on Windows, `cmd.exe` is launched; use `exit` to return.
 
-В окне информации по `F1` список команд заменяется подробностями, а нижний блок с описанием и командой остаётся видимым.
+In the `F1` info view, the command list is replaced with full details, while the bottom pane displaying the description and command remains visible.
 
-## Свои команды
+## Custom Commands
 
-Создайте `commands.yaml` в текущей папке, укажите его через `TERMINALRUNNER_CONFIG` или отредактируйте `commands.yaml` рядом с EXE. Встроенный каталог содержит тестовые и платформенные примеры и предназначен только как пример структуры.
+Create a `commands.yaml` in the current working directory, specify it via `TERMINALRUNNER_CONFIG`, or edit `commands.yaml` located next to the EXE. The bundled catalog contains test and platform examples and is intended only as a structural reference.
 
-### Формат каталога
+### Catalog Format
 
-Каталог содержит непустой список `commands`. Каждая запись может содержать только следующие параметры:
+The catalog contains a non-empty `commands` list. Each entry may only include the following fields:
 
-| Параметр | Обязателен | Описание |
+| Parameter | Required | Description |
 | --- | --- | --- |
-| `title` | Да | Название, которое отображается в списке команд. |
-| `description` | Нет | Пояснение к команде. Показывается в интерфейсе и полностью открывается по `F1`. По умолчанию пустая строка. |
-| `commands` | Да, кроме разделителя | Непустой список команд. Каждая команда - непустой список строк: имя программы и её аргументы. |
-| `ignore_errors` | Нет | Выполнять все команды в списке даже при ошибках отдельных шагов. По умолчанию `false`. |
+| `title` | Yes | Title displayed in the command list. |
+| `description` | No | Explanation of the command. Displayed in the UI and opened in full via `F1`. Defaults to an empty string. |
+| `commands` | Yes, except for separators | Non-empty list of commands. Each command is a non-empty list of strings: the program name followed by its arguments. |
+| `ignore_errors` | No | Continue executing all commands in the list even if individual steps fail. Defaults to `false`. |
 
-Пример последовательного запуска команд:
+Sequential execution example:
 
 ```yaml
 commands:
-  # Записи только с `title` создают разделители в списке и не запускаются
-  - title: Проверки
+  # Entries containing only `title` create separators in the list and cannot be run
+  - title: Checks
 
-  - title: Проверить проект
-    description: Запускает проверки по порядку и останавливается на первой ошибке.
+  - title: Check Project
+    description: Runs checks in sequence and stops at the first failure.
     commands:
       - [ruff, check, .]
       - [mypy]
       - [python3, -m, unittest, discover, -v]
 ```
 
-Незаполняемая запись с одним `title` создаёт неисполняемый разделитель. Неизвестные поля и разделители с дополнительными полями отклоняются. Аргументы, похожие на YAML-значения (`true`, `null`, `001`, даты), заключайте в кавычки, чтобы передать их как строки.
+An entry containing only a `title` creates a non-executable separator. Unknown fields and separators with extra fields are rejected. For arguments that resemble YAML literals (`true`, `null`, `001`, dates), wrap them in quotes to ensure they are passed as strings.
 
-### Выполнение команд и безопасность
+### Command Execution and Security
 
-Каталог не интерпретируется целиком как shell-код. По умолчанию каждая команда передаётся приложению готовым списком аргументов: аргумент с пробелом остаётся одной строкой `[tool, "Hello world"]`, а литеральные кавычки передаются как часть строки `[tool, '"exact value"']`.
+The catalog is not interpreted in its entirety as shell script. By default, each command is passed to the operating system as a prepared argument list: arguments containing spaces stay intact as a single string `[tool, "Hello world"]`, and literal quotes are passed as part of the string `[tool, '"exact value"']`.
 
-#### Типы шагов в `commands`
+#### Step Types in `commands`
 
-1. **Прямой запуск программ (`.exe` / бинарники):**
+1. **Direct Executable Invocations (`.exe` / binaries):**
    ```yaml
    - [py, --version]
    - [git, status]
    ```
-   Программа запускается операционной системой напрямую без командного интерпретатора (без `cmd.exe` или `/bin/sh`). Аргументы не подвергаются shell-интерпретации.
+   The program is launched directly by the operating system without an intermediate shell interpreter (no `cmd.exe` or `/bin/sh`). Arguments undergo no shell interpretation.
 
-2. **Скрипты PowerShell (`.ps1`):**
+2. **PowerShell Scripts (`.ps1`):**
    ```yaml
    - [./deploy.ps1, -Environment, prod]
    ```
-   В Windows файлы с расширением `.ps1` автоматически запускаются через `powershell.exe -NoProfile -File ...`.
+   On Windows, files with the `.ps1` extension are automatically executed via `powershell.exe -NoProfile -File ...`.
 
-3. **Windows batch-файлы (`.bat`, `.cmd`):**
+3. **Windows Batch Files (`.bat`, `.cmd`):**
    ```yaml
    - [build.bat, --release]
    ```
-   Автоматически запускаются через `cmd.exe /d /s /c call ...`, так как Windows не запускает batch-файлы напрямую как бинарники. Для аргументов batch-файлов метасимволы CMD (`&`, `|`, `<`, `>`, `(`, `)`, `^`, `%`, `!`, `"`) не поддерживаются в целях безопасности.
+   Automatically executed via `cmd.exe /d /s /c call ...`, since Windows does not run batch files directly as native binaries. For batch file arguments, CMD metacharacters (`&`, `|`, `<`, `>`, `(`, `)`, `^`, `%`, `!`, `"`) are disallowed for security reasons.
 
-4. **Команды оболочки (`shell:`):**
+4. **Shell Commands (`shell:`):**
    ```yaml
    - shell: 'echo Windows user: %USERNAME%'
    - shell: 'echo Linux user: $USER'
    ```
-   Выполняются через командный интерпретатор системы: в Windows через `cmd.exe /d /s /c "..."`, в Linux через `/bin/sh -c "..."`. Используйте `shell:`, когда требуются:
-   - Встроенные команды оболочки (`echo`, `dir`, `copy`, `cd` — у них нет файлов `.exe`);
-   - Переменные окружения (`%VAR%` в Windows, `$VAR` в Linux);
-   - Конвейеры (`|`), перенаправления (`>`, `<`) и операторы связки (`&&`, `&`).
+   Executed via the system shell: on Windows via `cmd.exe /d /s /c "..."`, on Linux via `/bin/sh -c "..."`. Use `shell:` when you need:
+   - Built-in shell commands (`echo`, `dir`, `copy`, `cd` — which do not have `.exe` files);
+   - Environment variables (`%VAR%` on Windows, `$VAR` on Linux);
+   - Pipes (`|`), redirections (`>`, `<`), and chaining operators (`&&`, `&`).
 
-#### Запуск командлетов и команд PowerShell
+#### Running PowerShell Cmdlets and Commands
 
-Поскольку директива `shell:` в Windows использует `cmd.exe`, команды и синтаксис PowerShell (например, `throw`, `Write-Host`, `Get-ChildItem`) не работают внутри `shell:`. Для вызова PowerShell запускайте его напрямую списком аргументов:
+Because the `shell:` directive on Windows uses `cmd.exe`, PowerShell cmdlets and syntax (such as `throw`, `Write-Host`, `Get-ChildItem`) will not work inside `shell:`. To invoke PowerShell, launch it directly as an argument list:
 ```yaml
 - [powershell, -NoProfile, -Command, 'Write-Host "Hello from PowerShell"']
-# или через PowerShell 7 (pwsh):
-- [pwsh, -NoProfile, -Command, 'throw "Ошибка"']
+# or via PowerShell 7 (pwsh):
+- [pwsh, -NoProfile, -Command, 'throw "Error"']
 ```
 
-#### Многострочные команды
+#### Multiline Commands
 
-1. **Рекомендуемый способ — отдельные шаги в `commands`:**
-   Разбивайте цепочку на несколько элементов списка `commands:`. Каждый шаг запускается независимо, вывод последовательно отображается в терминале, а код выхода каждого шага отслеживается:
+1. **Recommended Approach — Separate steps in `commands`:**
+   Split the sequence into multiple items under `commands:`. Each step runs independently, output is streamed sequentially to the terminal, and each exit code is tracked:
    ```yaml
    commands:
-     - shell: 'echo Шаг 1'
-     - shell: 'echo Шаг 2'
+     - shell: 'echo Step 1'
+     - shell: 'echo Step 2'
    ```
 
-2. **Объединение длинных строк через YAML folded scalar (`>`):**
-   Если нужно записать длинную команду оболочки в несколько строк конфигурационного файла:
+2. **Joining long lines using the YAML folded scalar (`>`):**
+   If you need to write a long shell command across multiple lines in the configuration file:
    ```yaml
    commands:
      - shell: >
@@ -140,9 +142,9 @@ commands:
          git checkout main &&
          git pull --rebase
    ```
-   Символ `>` объединяет строки через пробел, формируя одну валидную команду для `cmd.exe` или `/bin/sh`.
+   The `>` symbol folds newlines into spaces, forming a single valid command for `cmd.exe` or `/bin/sh`.
 
-3. **Многострочный блок PowerShell через `|`:**
+3. **Multiline PowerShell block via `|`:**
    ```yaml
    commands:
      - [pwsh, -NoProfile, -Command, |
@@ -151,13 +153,13 @@ commands:
        ]
    ```
 
-#### Порядок выполнения и `ignore_errors`
+#### Execution Order and `ignore_errors`
 
-Команды выполняются по порядку и останавливаются после первой ошибки. Если требуется выполнить все шаги цепочки независимо от падения промежуточных команд, укажите `ignore_errors: true`:
+Commands execute sequentially and stop immediately after the first error. If you need to run all steps regardless of intermediate failures, set `ignore_errors: true`:
 
 ```yaml
-- title: Сборка и проверки
-  description: Запустит все проверки даже если линтер нашел ошибки.
+- title: Build and Checks
+  description: Runs all checks even if the linter finds errors.
   ignore_errors: true
   commands:
     - [ruff, check, .]
@@ -165,48 +167,48 @@ commands:
     - [python, -m, unittest, discover]
 ```
 
-При `ignore_errors: true`:
-- Все шаги в `commands` будут выполнены до конца;
-- Если хотя бы один шаг завершился с ошибкой, итоговый статус в TerminalRunner покажет **❌** с кодом возврата первой упавшей команды;
-- Прерывание по `Ctrl+C` по-прежнему немедленно останавливает весь процесс.
+When `ignore_errors: true`:
+- All steps in `commands` will be executed to completion;
+- If at least one step fails, the final status in TerminalRunner will show **❌** with the exit code of the first failing command;
+- Cancelling with `Ctrl+C` still aborts the entire process immediately.
 
-## Сборка EXE для Windows
+## Building the Windows EXE
 
-В Windows выполните из корня репозитория:
+On Windows, run from the repository root:
 
 ```bat
 build-exe.bat
 ```
 
-Можно также дважды щёлкнуть `build-exe.bat` в Проводнике. Скрипт установит инструменты разработки, удалит существующие `build/` и `dist/`, соберёт приложение через PyInstaller и создаст `dist\TerminalRunner.exe` вместе с `dist\commands.yaml`. Редактируйте `dist\commands.yaml`, чтобы изменить каталог команд без новой сборки.
+You can also double-click `build-exe.bat` in File Explorer. The script will install dev dependencies, remove existing `build/` and `dist/` directories, build the application using PyInstaller, and produce `dist\TerminalRunner.exe` along with `dist\commands.yaml`. Edit `dist\commands.yaml` to modify the command catalog without rebuilding.
 
-## Настройка и разработка
+## Configuration and Development
 
-### Где ищется конфигурация
+### Configuration Resolution Order
 
-Конфигурация выбирается в этом порядке:
+Configuration is loaded in the following order:
 
-1. Путь из переменной окружения `TERMINALRUNNER_CONFIG`.
-2. `commands.yaml` рядом с собранным EXE.
-3. `commands.yaml` в текущей папке.
-4. Встроенный каталог `terminalrunner/commands.yaml`.
+1. Path specified in the `TERMINALRUNNER_CONFIG` environment variable.
+2. `commands.yaml` located next to the built EXE.
+3. `commands.yaml` in the current working directory.
+4. Bundled fallback catalog at `terminalrunner/commands.yaml`.
 
-Пример запуска с отдельным каталогом:
+Example running with a custom catalog:
 
 ```powershell
 $env:TERMINALRUNNER_CONFIG = "D:\Repos\TerminalRunner\commands.yaml"
 terminalrunner
 ```
 
-### Состояние приложения
+### Application State
 
-Выбранная тема сохраняется при выходе.
+The selected theme is saved on exit.
 
 - Windows: `%LOCALAPPDATA%\TerminalRunner\state.json`
-- Linux: `$XDG_STATE_HOME/terminalrunner/state.json` или `~/.local/state/terminalrunner/state.json`
-- `TERMINALRUNNER_STATE` задаёт другой путь к файлу состояния.
+- Linux: `$XDG_STATE_HOME/terminalrunner/state.json` or `~/.local/state/terminalrunner/state.json`
+- `TERMINALRUNNER_STATE` sets a custom path for the state file.
 
-### Проверки локально
+### Local Checks
 
 ```powershell
 py -m pip install -e ".[dev]"
